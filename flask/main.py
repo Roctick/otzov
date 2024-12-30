@@ -51,10 +51,22 @@ index_to_char = {idx: char for char, idx in char_to_index.items()}
 MAX_LABEL_LENGTH = 10
 
 def preprocess_image(image):
+    if len(image.shape) == 3:  # Проверяем, есть ли три канала
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = image  # Если изображение уже черно-белое
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    try:
+        resized = cv2.resize(gray, (200, 50))  # Изменение размера на (200, 50)
+    except Exception as e:
+        raise ValueError(f"Ошибка при изменении размера изображения: {e}")
     resized = cv2.resize(gray, (200, 50))  # Изменение размера на (200, 50)
-    normalized = resized / 255.0
-    reshaped = np.expand_dims(normalized, axis=(0, -1))  # Добавление размерностей
+    normalized = (resized / 255.0)  # Для диапазона [0, 1]
+# normalized = (resized / 127.5) - 1  # Для диапазона [-1, 1]
+    reshaped = np.expand_dims(normalized, axis=(0, -1))  # Добавляем размерности
+    if reshaped.shape != (1, 50, 200, 1):
+        raise ValueError(f"Неправильный размер изображения: {reshaped.shape}")
+ # Добавление размерностей
     return reshaped
 
 def decode_predictions(predictions):
