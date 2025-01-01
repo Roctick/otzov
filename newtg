@@ -1,0 +1,63 @@
+import os
+import time
+import requests
+from telethon import TelegramClient, events
+import asyncio
+
+API_ID = 25778496
+API_HASH = 'c4b99fa0660466494f14cd7ff7819451'
+SESSION_NAME = "anon7.session"
+TARGET_BOT_ID = 503474174
+MODEL_API_URL = "http://127.0.0.1:5000/predict"  # URL API модели
+
+async def handle_messages(event):
+    if event.raw_text.lower() == "start work":
+        await event.reply("Get next captcha")
+        print("Получена команда: Start work. Отправлено: Get next captcha")
+
+    elif event.photo:
+        try:
+            # Скачиваем фото капчи
+            photo_path = await event.download_media()
+            print(f"Капча сохранена: {photo_path}")
+
+            # Отправляем капчу в модель
+            with open(photo_path, 'rb') as image_file:
+                response = requests.post(MODEL_API_URL, files={'image': image_file})
+                if response.status_code == 200:
+                    captcha_solution = response.json().get('captcha', '')
+                    if captcha_solution:
+                        await event.reply(captcha_solution)
+                        print(f"Капча решена: {captcha_solution}")
+                    else:
+                        await event.reply("Не удалось распознать капчу.")
+                        print("Не удалось решить капчу.")
+                else:
+                    print(f"Ошибка при обращении к модели: {response.status_code}")
+        except Exception as e:
+            print(f"Ошибка обработки капчи: {e}")
+
+    elif "no captcha" in event.raw_text.lower():
+        await event.reply("Get next captcha")
+        print("Капч нет. Отправлено: Get next captcha")
+
+async def telegram_worker():
+    print("Клиент Telegram запускается...")
+    async with TelegramClient(SESSION_NAME, API_ID, API_HASH) as client:
+        print("Клиент Telegram подключен.")
+
+        @client.on(events.NewMessage)
+        async def message_handler(event):
+            await handle_messages(event)
+
+        print("Ожидание сообщений...")
+        await client.send_message(TARGET_BOT_ID, 'Start work')  # Отправляем команду
+        print("Отправлена команда: Start work")
+
+        await client.run_until_disconnected()
+
+if __name__ == "__main__":
+    try:
+        asyncio.run(telegram_worker())
+    except Exception as e:
+        print(f"Ошибка: {e}")
