@@ -1,0 +1,20 @@
+from flask import Flask, request, jsonify
+from PIL import Image
+import numpy as np
+
+app = Flask(__name__)
+
+# Предполагаем, что модель уже загружена
+@app.route('/predict', methods=['POST'])
+def predict():
+    file = request.files['image']
+    image = Image.open(file).convert('L').resize((128, 64))
+    image_array = np.array(image) / 255.0
+    image_array = np.expand_dims(image_array, axis=0)
+    prediction = model.predict(image_array)
+    decoded, _ = K.ctc_decode(prediction, input_length=np.ones(prediction.shape[0]) * prediction.shape[1])
+    captcha_text = "".join([chr(char) for char in decoded[0][0].numpy() if char != -1])
+    return jsonify({'captcha': captcha_text})
+
+if __name__ == '__main__':
+    app.run(host='127.0.0.1', port=5000)
